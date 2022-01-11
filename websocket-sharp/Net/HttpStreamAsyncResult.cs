@@ -168,8 +168,10 @@ namespace WebSocketSharp.Net
         if (_waitHandle != null)
           _waitHandle.Set ();
 
-        if (_callback != null)
-          _callback.BeginInvoke (this, ar => _callback.EndInvoke (ar), null);
+        if (_callback != null) {
+          var cb = _callback;
+          System.Threading.Tasks.Task.Run(() => cb(this));
+        }
       }
     }
 

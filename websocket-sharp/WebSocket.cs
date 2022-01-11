@@ -1191,10 +1191,7 @@ namespace WebSocketSharp
       PayloadData payloadData, bool send, bool receive, bool received
     )
     {
-      Action<PayloadData, bool, bool, bool> closer = close;
-      closer.BeginInvoke (
-        payloadData, send, receive, received, ar => closer.EndInvoke (ar), null
-      );
+      System.Threading.Tasks.Task.Run(() => close(payloadData, send, receive, received));
     }
 
     private bool closeHandshake (byte[] frameAsBytes, bool receive, bool received)
@@ -1533,8 +1530,8 @@ namespace WebSocketSharp
 
         e = _messageEventQueue.Dequeue ();
       }
-
-      _message.BeginInvoke (e, ar => _message.EndInvoke (ar), null);
+      var msg = _message;
+      System.Threading.Tasks.Task.Run(() => msg(e));
     }
 
     private bool ping (byte[] data)
@@ -1902,15 +1899,10 @@ namespace WebSocketSharp
 
     private void sendAsync (Opcode opcode, Stream stream, Action<bool> completed)
     {
-      Func<Opcode, Stream, bool> sender = send;
-      sender.BeginInvoke (
-        opcode,
-        stream,
-        ar => {
+      System.Threading.Tasks.Task.Run(() => send(opcode, stream)).ContinueWith(sent => {
           try {
-            var sent = sender.EndInvoke (ar);
             if (completed != null)
-              completed (sent);
+              completed(sent.Result);
           }
           catch (Exception ex) {
             _logger.Error (ex.ToString ());
@@ -1919,9 +1911,7 @@ namespace WebSocketSharp
               ex
             );
           }
-        },
-        null
-      );
+      });
     }
 
     private bool sendBytes (byte[] bytes)
@@ -2465,14 +2455,7 @@ namespace WebSocketSharp
         return;
       }
 
-      Func<bool> acceptor = accept;
-      acceptor.BeginInvoke (
-        ar => {
-          if (acceptor.EndInvoke (ar))
-            open ();
-        },
-        null
-      );
+      System.Threading.Tasks.Task.Run(accept).ContinueWith(b => open());
     }
 
     /// <summary>
@@ -3159,14 +3142,7 @@ namespace WebSocketSharp
         return;
       }
 
-      Func<bool> connector = connect;
-      connector.BeginInvoke (
-        ar => {
-          if (connector.EndInvoke (ar))
-            open ();
-        },
-        null
-      );
+      System.Threading.Tasks.Task.Run(connect).ContinueWith(b => open());
     }
 
     /// <summary>
